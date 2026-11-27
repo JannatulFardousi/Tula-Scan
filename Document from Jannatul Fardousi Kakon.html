@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TulaScan Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap">
+<style>
+/* VOICE: calm, practical field tool for cotton growers and agronomy researchers
+   IDEA: an agronomist's field notebook that reads a single leaf
+   PICTURE: the leaf itself, framed by scan corners, with its attention map
+   COLOUR and TYPE: leaf green on pale field ground; N, P, K tints from real symptoms; Space Grotesk + Inter, Hind Siliguri for Bengali
+   LAYOUT: phone = top bar + bottom tabs; desktop = sidebar + two-column result */
+:root{color-scheme:light dark;
+--bg:light-dark(#F4F5EF,#101511);--surface:light-dark(#FFFFFF,#182019);--surface2:light-dark(#ECEFE7,#222A24);
+--line:light-dark(#E0E4DA,#2C362E);--line2:light-dark(#C9D0C3,#3C483E);
+--ink:light-dark(#16201A,#E6ECE7);--muted:light-dark(#56615A,#A3AFA6);
+--pri:light-dark(#1E5B3A,#73C795);--onpri:light-dark(#FFFFFF,#0B2214);--prisoft:light-dark(#E3EEE6,#1C3125);--prihover:light-dark(#164A2E,#8AD6A8);
+--warnbg:light-dark(#FBF3E2,#2B2413);--warnink:light-dark(#5C430F,#EFD49A);--warnline:light-dark(#EEDDB6,#4A3C1C);
+--badbg:light-dark(#FBE7E3,#33201C);--badink:light-dark(#8A2A17,#F3B3A4);
+--H:light-dark(#2F7D4F,#5DB884);--N:light-dark(#B7791F,#D9A441);--P:light-dark(#6B4BA1,#A98BDB);--K:light-dark(#B4532A,#E08A5F);--U:light-dark(#8A948C,#6F7A72);
+--Hbg:light-dark(#E3EEE6,#1C3125);--Hink:light-dark(#1E5B3A,#8FD3A4);--Nbg:light-dark(#F6E7C6,#382C12);--Nink:light-dark(#6E4708,#F2CF8A);
+--Pbg:light-dark(#EAE3F4,#2A2340);--Pink:light-dark(#4E3480,#CDBAF0);--Kbg:light-dark(#F6DFD3,#3B2318);--Kink:light-dark(#8A3B19,#F2B394);
+--Ubg:light-dark(#ECEEE9,#252B26);--Uink:light-dark(#4A554D,#B9C3BB);
+--shadow:0 1px 2px rgb(16 24 18/.06),0 6px 20px rgb(16 24 18/.06);
+--font:Inter,'Hind Siliguri',system-ui,sans-serif;--disp:'Space Grotesk','Hind Siliguri',Inter,sans-serif}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--font);overflow-x:clip;-webkit-tap-highlight-color:transparent}
+html[lang=bn] body{font-family:'Hind Siliguri',Inter,sans-serif;line-height:1.6}
+a{color:var(--pri)}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--pri) 60%,transparent);outline-offset:2px}
+[hidden]{display:none!important}
+.app{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr)}
+.side{display:none}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 8px 16px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .acts{display:flex;align-items:center;gap:2px}
+main{width:100%;max-width:1120px;margin:0 auto;padding:18px 16px 104px;outline:none}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:62px;font-size:12px;font-weight:500;color:var(--muted);text-decoration:none}
+.tabs a[aria-current=page]{color:var(--pri);font-weight:600}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none}
+.mark{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:#1E5B3A;color:#fff;flex:none}
+.bname{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:-.01em}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:22px}
+.nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:500}
+.nav a:hover{background:var(--surface2)}
+.nav a[aria-current=page]{background:var(--prisoft);color:var(--pri);font-weight:600}
+.sidefoot{margin-top:auto;display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--muted)}
+@media(min-width:900px){
+ .app{grid-template-columns:244px minmax(0,1fr)}
+ .side{display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:22px 14px;border-right:1px solid var(--line);background:var(--surface)}
+ .top,.tabs{display:none}
+ main{padding:30px 40px 56px}
+}
+.app.bare{grid-template-columns:minmax(0,1fr)}.app.bare .side,.app.bare .top,.app.bare .tabs{display:none}
+.app.bare main{max-width:none;padding:0}
+.title{font-family:var(--disp);font-weight:600;font-size:clamp(24px,3vw,32px);line-height:1.1;letter-spacing:-.015em;margin:0;text-wrap:balance;outline:none}
+html[lang=bn] .title{line-height:1.3;letter-spacing:0}
+.sec{font-size:16px;font-weight:600;margin:0}
+.muted{color:var(--muted)}.small{font-size:13px;line-height:1.45}.center{text-align:center}
+p{margin:0}
+.stackv{display:flex;flex-direction:column;gap:16px}.tight{gap:6px}
+.headrow{display:flex;align-items:center;gap:6px;margin:0 0 18px}
+.headrow .iconbtn{margin-left:-10px}
+.headrow .grow{flex:1}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 18px}
+.card h3{font-size:15px;font-weight:600;margin:0 0 10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:13px;border:1px solid transparent;font-size:15px;font-weight:600;text-decoration:none;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap}
+.btn-pri{background:var(--pri);color:var(--onpri)}.btn-pri:hover{background:var(--prihover)}
+.btn-out{background:var(--surface);color:var(--ink);border-color:var(--line2)}.btn-out:hover{background:var(--surface2)}
+.btn-ghost{background:transparent;color:var(--pri)}.btn-ghost:hover{background:var(--prisoft)}
+.btn-danger{background:#B3261E;color:#fff}.btn-danger:hover{background:#951F18}
+.danger{color:var(--badink)}
+.block{width:100%}
+.btns{display:flex;flex-wrap:wrap;gap:10px}.btns .btn{flex:1 1 180px}
+.iconbtn{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--ink);cursor:pointer;text-decoration:none;flex:none}
+.iconbtn:hover{background:var(--surface2)}
+.pillbtn{min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:var(--surface2);border-radius:12px;padding:3px}
+.seg button{min-height:40px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;padding:0 12px}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg .bn{font-family:'Hind Siliguri',sans-serif}
+.notice{display:flex;gap:10px;padding:12px 14px;border-radius:14px;background:var(--warnbg);border:1px solid var(--warnline);color:var(--warnink);font-size:14px;line-height:1.45}
+.notice .ic{margin-top:2px}
+/* welcome */
+.welcome{min-height:100vh;display:grid;place-items:center;padding:24px 20px 32px}
+.wbox{width:100%;max-width:1000px;display:grid;gap:24px;grid-template-areas:"brand" "art" "text"}
+.wbrand{grid-area:brand;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wart{grid-area:art}.wtext{grid-area:text;display:flex;flex-direction:column;gap:16px}
+.wtext .title{font-size:clamp(30px,5vw,48px);line-height:1.05}
+.lead{font-size:17px;color:var(--muted);max-width:34em}
+@media(min-width:860px){.wbox{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"brand brand" "text art";align-items:center;column-gap:48px}}
+.wart{position:relative;aspect-ratio:5/4;border-radius:28px;background:var(--prisoft);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ring{position:absolute;border-radius:50%;border:1px solid color-mix(in srgb,var(--pri) 25%,transparent);aspect-ratio:1}
+.r1{width:82%}.r2{width:60%}
+.frame{position:relative;width:52%;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.frame svg{width:86%;height:auto}
+.cn{position:absolute;width:15%;aspect-ratio:1;border:3px solid var(--pri)}
+.cn.tl{left:0;top:0;border-right:0;border-bottom:0;border-top-left-radius:12px}.cn.tr{right:0;top:0;border-left:0;border-bottom:0;border-top-right-radius:12px}
+.cn.bl{left:0;bottom:0;border-right:0;border-top:0;border-bottom-left-radius:12px}.cn.br{right:0;bottom:0;border-left:0;border-top:0;border-bottom-right-radius:12px}
+.sl{position:absolute;left:6%;right:6%;top:60%;height:2px;background:var(--pri);opacity:.55}
+.nb{position:absolute;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+.nb.N{top:11%;right:13%;background:var(--Nbg);color:var(--Nink)}.nb.P{bottom:12%;left:11%;background:var(--Pbg);color:var(--Pink)}.nb.K{bottom:22%;right:8%;background:var(--Kbg);color:var(--Kink)}
+/* home */
+.homegrid{display:grid;gap:16px}
+@media(min-width:1000px){.homegrid{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
+.hero{position:relative;overflow:hidden;border-radius:22px;background:#1E5B3A;color:#fff;padding:22px;display:flex;flex-direction:column;gap:16px}
+.hero .deco{position:absolute;right:-40px;top:-34px;width:190px;opacity:.14}
+.hero h1{font-family:var(--disp);font-size:clamp(24px,3vw,30px);font-weight:600;margin:0;outline:none}
+.hero p{color:#D6E6DA;max-width:30em}
+.hero .btn-w{background:#fff;color:#1E5B3A}.hero .btn-w:hover{background:#E3EEE6}
+.hero .btn-o{border-color:rgb(255 255 255/.5);color:#fff;background:transparent}.hero .btn-o:hover{background:rgb(255 255 255/.1)}
+.hero .btns{position:relative}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}
+.homegrid>.card{display:flex;flex-direction:column}.homegrid .stats{flex:1}.stat{justify-content:flex-end;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:600}
+.stat b{font-family:var(--disp);font-size:26px;line-height:1.1}
+@media(max-width:480px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.tip{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-size:14px;line-height:1.3}
+.tip .tic{width:34px;height:34px;border-radius:10px;background:var(--prisoft);color:var(--pri);display:flex;align-items:center;justify-content:center;flex:none}
+@media(min-width:1000px){.tips{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.sechead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 8px}
+.lnk{font-size:14px;font-weight:600;text-decoration:none;padding:10px 0;display:inline-block}
+/* lists */
+.list{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.item{display:flex;align-items:center;gap:6px;padding:8px 6px 8px 12px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.ilink{display:flex;align-items:center;gap:12px;flex:1;min-height:52px;color:var(--ink);text-decoration:none;border-radius:10px}
+.ilink img{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none;background:var(--surface2)}
+.itx{flex:1;display:flex;flex-direction:column;gap:1px}
+.it1{font-size:15px;font-weight:600}.it2{font-size:13px;color:var(--muted)}
+.pill{font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.H.pill,.H.cb,.H.stat,.H.gthumb{background:var(--Hbg);color:var(--Hink)}.N.pill,.N.cb,.N.stat,.N.gthumb{background:var(--Nbg);color:var(--Nink)}
+.P.pill,.P.cb,.P.stat,.P.gthumb{background:var(--Pbg);color:var(--Pink)}.K.pill,.K.cb,.K.stat,.K.gthumb{background:var(--Kbg);color:var(--Kink)}
+.U.pill,.U.cb,.U.stat{background:var(--Ubg);color:var(--Uink)}
+.empty{padding:28px 18px;text-align:center;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:12px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none}
+.chip{flex:none;min-height:40px;padding:0 15px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);font-size:14px;font-weight:600;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--pri);border-color:var(--pri);color:var(--onpri)}
+.search{position:relative}.search .ic{position:absolute;left:14px;top:15px;color:var(--muted)}
+.search input{padding-left:42px}
+/* fields */
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.flabel{font-size:14px;font-weight:600}
+.field label span{font-weight:400;color:var(--muted)}
+input[type=text],input[type=search],input[type=url],select{width:100%;height:48px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);padding:0 14px;font-size:16px}
+input[type=range]{width:100%;accent-color:var(--pri);height:28px}
+.opt{display:flex;align-items:center;gap:12px;min-height:50px;padding:0 14px;border:1px solid var(--line2);border-radius:12px;cursor:pointer;font-weight:500;background:var(--surface)}
+.opt input{width:18px;height:18px;accent-color:var(--pri);margin:0}
+.opt:has(input:checked){border-color:var(--pri);background:var(--prisoft)}
+pre{margin:0;background:var(--surface2);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;overflow-x:auto}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+/* scan */
+.scangrid{display:grid;gap:16px}
+@media(min-width:1000px){.scangrid{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start}}
+.vf{position:relative;border-radius:22px;overflow:hidden;aspect-ratio:4/5;max-height:58vh;width:100%;display:flex;align-items:center;justify-content:center;color:#fff;background:radial-gradient(60% 45% at 18% 20%,#55643F 0%,transparent 100%),radial-gradient(55% 45% at 88% 30%,#45553A 0%,transparent 100%),radial-gradient(70% 50% at 75% 90%,#54442F 0%,transparent 100%),#232B21;transition:outline-color .15s;outline:3px dashed transparent;outline-offset:-10px}
+@media(min-width:700px){.vf{aspect-ratio:16/11}}
+.vf.drag{outline-color:#8FD3A4}
+.vf .frame{width:auto;height:64%}.vf .cn{border-color:#fff}
+.vf .ghost{width:78%;opacity:.55}
+.vfpill{position:absolute;top:16px;left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:999px;background:rgb(0 0 0/.55);font-size:13px;font-weight:500;white-space:nowrap}
+.vfdrop{position:absolute;bottom:16px;left:16px;right:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:#D9E4DC;text-align:center}
+.tiprow{display:flex;gap:10px;align-items:center;padding:8px 0;font-size:14px}
+.tiprow .tic{width:30px;height:30px;border-radius:9px;background:var(--prisoft);color:var(--pri);display:flex;align-items:center;justify-content:center;flex:none}
+.samples{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-top:10px}
+.sample{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:left;font-size:13px;font-weight:600}
+.sample:hover{border-color:var(--pri)}
+.sample img,.sample .ph{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--surface2);display:block}
+/* photo + results */
+.two{display:grid;gap:18px}
+@media(min-width:1000px){.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:28px}.stick{position:sticky;top:24px}}
+.photo{position:relative;border-radius:18px;overflow:hidden;background:#1B231D;display:flex;align-items:center;justify-content:center;min-height:220px}
+.pwrap{position:relative;line-height:0}
+.pwrap img{display:block;max-width:100%;max-height:min(58vh,480px);width:auto;height:auto}
+.pwrap .hm{position:absolute;inset:0;width:100%;height:100%;max-height:none;opacity:.9}
+.legend{position:absolute;left:12px;bottom:12px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgb(0 0 0/.62);color:#fff;font-size:12px;font-weight:500;line-height:1}
+.legend i{width:64px;height:6px;border-radius:3px;background:linear-gradient(90deg,#263A96,#22A0AA,#F2D43A,#E2301A)}
+.qrow{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.qrow:first-of-type{border-top:0}
+.st{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.st.good{background:var(--prisoft);color:var(--pri)}.st.warn{background:var(--warnbg);color:var(--warnink)}.st.bad{background:var(--badbg);color:var(--badink)}
+.qt{flex:1;display:flex;flex-direction:column;gap:2px;font-size:15px}
+.qv{font-size:14px;white-space:nowrap}.qv.good{color:var(--pri)}.qv.warn{color:var(--warnink)}.qv.bad{color:var(--badink)}
+.rlabel{font-size:13px;font-weight:600;color:var(--muted)}
+.rhead{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
+.rtitle{font-family:var(--disp);font-size:clamp(22px,2.4vw,27px);line-height:1.15;font-weight:600;margin:0}
+.cb{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none}
+.cb.lg{width:48px;height:48px;border-radius:14px;font-size:21px}
+.confrow{display:flex;align-items:baseline;justify-content:space-between;font-size:14px;color:var(--muted);margin-bottom:6px}
+.confrow b{font-size:24px;color:var(--ink)}
+.bar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px}
+.bar.sm{height:6px;margin:6px 0 0 38px}
+.crow{padding:7px 0}.crt{display:flex;align-items:center;gap:10px;font-size:15px}.crt .cn2{flex:1}
+.stacked{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;margin:4px 0 12px}
+.lgd{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;font-size:14px}
+.lgd span{display:flex;align-items:center;gap:7px}.lgd i{width:10px;height:10px;border-radius:3px;flex:none}.lgd b{margin-left:auto}
+.sim{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;margin-top:8px}
+.tag{padding:3px 9px;border-radius:999px;background:var(--surface2)}
+.olist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:15px}
+.olist li{display:flex;gap:10px;align-items:flex-start}
+.num{width:24px;height:24px;border-radius:50%;background:var(--prisoft);color:var(--pri);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.savedtag{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 16px;border-radius:13px;background:var(--prisoft);color:var(--pri);font-weight:600;flex:1 1 180px}
+.utop{display:flex;align-items:center;gap:12px}
+.uicon{width:44px;height:44px;border-radius:12px;background:var(--Ubg);color:var(--Uink);display:flex;align-items:center;justify-content:center;flex:none}
+/* guide */
+.ggrid{display:grid;gap:12px}
+@media(min-width:900px){.ggrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.gcard{display:flex;gap:14px;align-items:flex-start}
+.gthumb{width:76px;height:76px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.gh{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;margin:0}
+.soft{background:var(--surface2);border-color:transparent}
+dl{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;font-size:14px}
+dt{color:var(--muted)}dd{margin:2px 0 0;font-weight:600}
+ul.lim{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+/* overlays */
+.busy{position:fixed;inset:0;z-index:40;background:color-mix(in srgb,var(--bg) 94%,transparent);display:flex;align-items:center;justify-content:center;padding:24px}
+.bbox{display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.bart{position:relative;width:190px;height:190px;border-radius:24px;overflow:hidden;background:#1B231D}
+.bart img{width:100%;height:100%;object-fit:cover;display:block}
+.scanline{position:absolute;left:0;right:0;top:8%;height:3px;background:#8FD3A4;box-shadow:0 0 14px #8FD3A4;animation:scan 1.1s ease-in-out infinite alternate}
+@keyframes scan{to{top:90%}}
+@media(prefers-reduced-motion:reduce){.scanline{animation:none;top:50%}}
+.btitle{font-family:var(--disp);font-size:20px;font-weight:600}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;text-align:left}
+.steps li{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:15px}
+.steps li .ic{opacity:0}.steps li.done{color:var(--ink)}.steps li.done .ic{opacity:1;color:var(--pri)}.steps li.now{color:var(--ink);font-weight:600}
+.scrim{position:fixed;inset:0;z-index:50;background:rgb(8 14 10/.5);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+@media(min-width:600px){.scrim{align-items:center}}
+.modal{background:var(--surface);border-radius:20px;padding:22px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 60px rgb(0 0 0/.25)}
+.modal h2{margin:0;font-size:19px;font-family:var(--disp)}
+.mrow{display:flex;gap:10px;margin-top:10px}.mrow .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1}
+@media(min-width:900px){.toast{bottom:28px;left:calc(50% + 122px)}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <a class="brand" href="#home" id="sideBrand"></a>
+    <nav class="nav" id="sidenav" aria-label="Main"></nav>
+    <div class="sidefoot" id="sidefoot"></div>
+  </aside>
+  <header class="top" id="top"></header>
+  <main id="view" tabindex="-1"></main>
+  <nav class="tabs" id="tabs" aria-label="Main"></nav>
+</div>
+<div id="busy" class="busy" hidden></div>
+<div id="modal"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<input type="file" id="camIn" accept="image/*" capture="environment" hidden>
+<input type="file" id="galIn" accept="image/*" hidden>
+<script>
+{
+/* ---------- constants & strings ---------- */
+const LEAF='M100 172 C82 166 52 168 36 146 C22 126 30 106 46 99 C27 90 16 66 30 50 C44 35 64 42 76 54 C72 33 84 16 100 13 C116 16 128 33 124 54 C136 42 156 35 170 50 C184 66 173 90 154 99 C170 106 178 126 164 146 C148 168 118 166 100 172 Z';
+const VEINS='M100 165 L100 26 M100 165 L38 54 M100 165 L162 54 M100 165 L42 140 M100 165 L158 140';
+const CLS=['H','N','P','K'];
+const QK=['bright','sharp','leaf','edges','bg'];
+const SAMPLE_KINDS=['H','N','P','K','poor'];
+const STR={en:{
+brand_tag:'Cotton leaf nutrient screening',nav_home:'Home',nav_scan:'Scan',nav_history:'History',nav_guide:'Guide',nav_prefs:'Preferences',lang:'Language',
+w_title:'Check cotton leaves for nutrient stress',w_body:'Photograph one cotton leaf. TulaScan screens it for signs of nitrogen (N), phosphorus (P) or potassium (K) deficiency.',
+disc_s:'A screening aid, not a lab test.',disc_b:'Disease, water stress and weather can cause similar symptoms. Confirm with a soil or leaf tissue test before treating a field.',start:'Get started',
+h_title:'Scan a leaf',h_body:'Get a screening result for nitrogen, phosphorus or potassium deficiency.',take:'Take photo',upload:'Upload photo',gallery:'Choose from gallery',try_sample:'Try a sample leaf',
+tips:'For a reliable result',tip1:'One leaf, fill the frame',tip2:'Daylight, no glare',tip3:'Plain background',tip4:'Hold steady, in focus',
+recent:'Recent scans',see_all:'See all',summary:'Your scans',total:'{n} in total',empty:'No scans yet. Your results will appear here.',
+s_title:'Scan leaf',s_hint:'Fit one leaf inside the frame',drop:'Drop or paste a leaf photo here',drop_desk:'Drag a photo onto the frame, paste one, or upload it from your computer.',
+samples:'No leaf at hand? Try a sample',samples_note:'Drawn test images for trying the app, not real photos.',smp_H:'Healthy',smp_N:'Low nitrogen',smp_P:'Low phosphorus',smp_K:'Low potassium',smp_poor:'Poor photo',
+reading:'Reading photo…',bad_file:'That file could not be opened as an image.',
+c_title:'Check photo',quality:'Photo quality',q_bright:'Brightness',q_sharp:'Sharpness',q_leaf:'Leaf in frame',q_edges:'Whole leaf visible',q_bg:'Background',
+v_good:'Good',v_dark:'Too dark',v_glare:'Too bright',v_blur:'Blurry',v_soft:'A bit soft',v_found:'Found',v_small:'Too small',v_none:'Not found',v_cut:'Cut off',v_yes:'Yes',v_plain:'Plain',v_busy:'Busy',
+n_dark:'Move into daylight or open shade.',n_glare:'Avoid direct sun and glare on the leaf.',n_blur:'Hold the phone still and tap the leaf to focus.',n_soft:'Hold steadier for a sharper photo.',
+n_small:'Move closer so the leaf fills the frame.',n_none:'No cotton-leaf colours were found in the photo.',n_cut:'Step back so the whole leaf is inside the frame.',n_busy:'Soil or other leaves behind the leaf may lower accuracy.',
+g1:'Retake in even daylight, with one leaf filling the frame.',g2:'Check that it is a cotton leaf.',
+plot:'Plot or field',optional:'(optional)',plot_ph:'e.g. Plot B, north side',stage:'Growth stage',st_unknown:'Not sure',st_seedling:'Seedling',st_squaring:'Squaring',st_flowering:'Flowering',st_boll:'Boll development',
+retake:'Retake',analyze:'Analyze leaf',q_warn:'Some checks failed, so the result will probably be unclear. Retaking the photo is recommended.',
+busy:'Analyzing leaf…',step1:'Preparing image',step2:'Running model',step3:'Building attention map',
+r_title:'Scan result',v_photo:'Photo',v_map:'Attention map',hint_photo:'Switch to Attention map to see which parts of the leaf the model relied on.',
+hint_map:'Warm areas influenced the prediction most. The map shows where the model looked, not proof of a deficiency.',hint_demo:'This demo map is built from leaf colour; your trained model can return a Grad-CAM map instead.',
+low:'Low',high:'High',screening:'Screening result',lk_H:'Looks healthy',lk_N:'Likely nitrogen deficiency',lk_P:'Likely phosphorus deficiency',lk_K:'Likely potassium deficiency',
+conf:'Model confidence',conf_ok:'Above your {t}% threshold. Next closest: {c}, {p}.',all:'All classes',
+c_H:'Healthy',c_N:'Nitrogen deficiency',c_P:'Phosphorus deficiency',c_K:'Potassium deficiency',sh_H:'Healthy',sh_N:'N',sh_P:'P',sh_K:'K',sh_U:'Unclear',sl_N:'Low N',sl_P:'Low P',sl_K:'Low K',
+looks:'What this looks like',d_H:'Even green colour across the leaf. No yellowing, purple tint or scorched edges.',
+d_N:'Pale green to yellow colour, usually starting on older, lower leaves and spreading evenly across the leaf.',
+d_P:'Dark, dull green leaves, sometimes with a purple or reddish tint. Plants may grow slowly.',
+d_K:'Yellowing and brown scorch starting at the leaf edges, often with curling. Can appear on upper leaves late in the season.',
+similar:'Can look like',sim_N:['Water stress','Leaf ageing'],sim_P:['Cold stress','Herbicide injury'],sim_K:['Alternaria leaf spot','Verticillium wilt'],
+act:'Before you act',act1:'Confirm with a soil or leaf tissue test.',act2:'Check nearby plants for disease or water stress.',act3:'Ask your local agriculture extension officer before applying fertilizer.',
+h_note:'Nothing to act on from this photo. Scan a few more leaves from different parts of the field to be sure.',
+r_disc:'This is an image-based screening result, not a laboratory diagnosis.',save:'Save to history',saved:'Saved to history',another:'Scan another leaf',guide_link:'Open leaf guide',del:'Delete scan',
+meta:'Model {m} · {d}',demo_note:'Demo model: this result is estimated from leaf colour in your browser, not from the trained CNN.',
+u_title:'No confident result',u_low:'The top match was {p}, below your {t}% threshold, so no result is shown.',u_q:'The photo did not pass the quality checks, so no result is shown.',
+scores:'Scores',better:'For a better photo',retake2:'Retake photo',save_u:'Save as unclear',
+hi_title:'History',search:'Search by plot or field',f_all:'All',n_scans:'{n} scans',n_scan:'1 scan',none_f:'No scans match.',export:'Export CSV',
+del_q:'Delete this scan?',del_b:'This cannot be undone.',cancel:'Cancel',deleted:'Scan deleted',no_plot:'No plot name',sample_tag:'Sample',today:'Today',yesterday:'Yesterday',
+g_title:'Leaf guide',g_sub:'What each result means, and what else can look the same.',about:'About the model',ver:'Version',classes:'Classes',runs:'Runs on',
+run_demo:'Demo model in this browser',run_api:'Your model server',limits:'Known limits',lim1:'Works best on one leaf in daylight against a plain background.',lim2:'Does not detect diseases or pests.',lim3:'Only meant for cotton leaves.',
+p_title:'Preferences',thr:'Confidence threshold',thr_help:'Results below this are shown as unclear instead of a diagnosis.',model:'Model',m_demo:'Demo model, in this browser',m_api:'My model server',api_url:'Server address',
+api_help:'TulaScan posts the photo as the multipart field “file” to {u}/predict and expects JSON like this:',
+api_note:'Inside the Claude preview, calls to other servers are blocked. To connect your model, open this file from your own computer or server.',
+test:'Test connection',conn_ok:'Server answered',conn_fail:'Could not reach the server',storage:'Storage',
+st_cloud:'Saved to your Claude account, on any device',st_local:'Saved in this browser only',st_memory:'Not saved: storage is unavailable here',
+clear:'Clear history',clear_q:'Delete all {n} scans?',cleared:'History cleared',welcome_again:'Show welcome screen',
+api_err:'Model server error: {e}',save_fail:'Could not save: {e}',csv_saved:'CSV saved',csv_copied:'CSV copied to the clipboard',dl_cancel:'Download cancelled',dl_fail:'Could not export',
+back:'Back',photo_alt:'Photo of the leaf',heat_alt:'Attention map over the leaf',app_line:'TulaScan prototype · frontend v0.1'
+},bn:{
+brand_tag:'তুলা পাতার পুষ্টি যাচাই',nav_home:'হোম',nav_scan:'স্ক্যান',nav_history:'ইতিহাস',nav_guide:'নির্দেশিকা',nav_prefs:'সেটিংস',lang:'ভাষা',
+w_title:'তুলা পাতায় পুষ্টির ঘাটতি যাচাই করুন',w_body:'একটি তুলা পাতার ছবি তুলুন। TulaScan পাতায় নাইট্রোজেন (N), ফসফরাস (P) বা পটাশিয়াম (K) ঘাটতির লক্ষণ খুঁজে দেখে।',
+disc_s:'এটি প্রাথমিক যাচাই, ল্যাব পরীক্ষা নয়।',disc_b:'রোগ, পানির অভাব বা আবহাওয়ার কারণেও একই রকম লক্ষণ দেখা দিতে পারে। জমিতে সার দেওয়ার আগে মাটি বা পাতা পরীক্ষা করে নিশ্চিত হোন।',start:'শুরু করুন',
+h_title:'পাতা স্ক্যান করুন',h_body:'নাইট্রোজেন, ফসফরাস বা পটাশিয়াম ঘাটতির প্রাথমিক ফলাফল পান।',take:'ছবি তুলুন',upload:'ছবি আপলোড',gallery:'গ্যালারি থেকে বেছে নিন',try_sample:'নমুনা পাতা দিয়ে দেখুন',
+tips:'নির্ভরযোগ্য ফলাফলের জন্য',tip1:'একটি পাতা, ফ্রেম ভরে',tip2:'দিনের আলো, ঝলক ছাড়া',tip3:'সাদামাটা পটভূমি',tip4:'স্থির ও ফোকাসে',
+recent:'সাম্প্রতিক স্ক্যান',see_all:'সব দেখুন',summary:'আপনার স্ক্যান',total:'মোট {n}টি',empty:'এখনো কোনো স্ক্যান নেই। আপনার ফলাফল এখানে দেখাবে।',
+s_title:'পাতা স্ক্যান',s_hint:'একটি পাতা ফ্রেমের ভেতরে রাখুন',drop:'পাতার ছবি এখানে ছেড়ে দিন বা পেস্ট করুন',drop_desk:'ছবি ফ্রেমে টেনে আনুন, পেস্ট করুন, বা কম্পিউটার থেকে আপলোড করুন।',
+samples:'হাতের কাছে পাতা নেই? নমুনা দিয়ে দেখুন',samples_note:'অ্যাপটি পরীক্ষার জন্য আঁকা ছবি, আসল ছবি নয়।',smp_H:'সুস্থ',smp_N:'নাইট্রোজেন কম',smp_P:'ফসফরাস কম',smp_K:'পটাশিয়াম কম',smp_poor:'খারাপ ছবি',
+reading:'ছবি পড়া হচ্ছে…',bad_file:'ফাইলটি ছবি হিসেবে খোলা যায়নি।',
+c_title:'ছবি যাচাই',quality:'ছবির মান',q_bright:'উজ্জ্বলতা',q_sharp:'স্পষ্টতা',q_leaf:'ফ্রেমে পাতা',q_edges:'পুরো পাতা দেখা যাচ্ছে',q_bg:'পটভূমি',
+v_good:'ভালো',v_dark:'খুব অন্ধকার',v_glare:'খুব উজ্জ্বল',v_blur:'ঝাপসা',v_soft:'একটু ঝাপসা',v_found:'পাওয়া গেছে',v_small:'খুব ছোট',v_none:'পাওয়া যায়নি',v_cut:'কেটে গেছে',v_yes:'হ্যাঁ',v_plain:'সাদামাটা',v_busy:'এলোমেলো',
+n_dark:'দিনের আলোয় বা খোলা ছায়ায় যান।',n_glare:'পাতায় সরাসরি রোদ ও ঝলক এড়িয়ে চলুন।',n_blur:'ফোন স্থির রাখুন এবং ফোকাস করতে পাতায় ট্যাপ করুন।',n_soft:'আরও স্পষ্ট ছবির জন্য ফোন স্থির রাখুন।',
+n_small:'কাছে যান যাতে পাতা ফ্রেম ভরে থাকে।',n_none:'ছবিতে তুলা পাতার রং পাওয়া যায়নি।',n_cut:'পিছিয়ে যান যাতে পুরো পাতা ফ্রেমের ভেতরে থাকে।',n_busy:'পাতার পেছনের মাটি বা অন্য পাতা নির্ভুলতা কমাতে পারে।',
+g1:'সমান দিনের আলোয়, একটি পাতা ফ্রেম ভরে রেখে আবার তুলুন।',g2:'নিশ্চিত হোন এটি তুলা পাতা।',
+plot:'প্লট বা জমি',optional:'(ঐচ্ছিক)',plot_ph:'যেমন: প্লট বি, উত্তর পাশ',stage:'বৃদ্ধির পর্যায়',st_unknown:'নিশ্চিত নই',st_seedling:'চারা',st_squaring:'কুঁড়ি আসা',st_flowering:'ফুল আসা',st_boll:'গুটি গঠন',
+retake:'আবার তুলুন',analyze:'পাতা বিশ্লেষণ করুন',q_warn:'কিছু যাচাই ব্যর্থ হয়েছে, তাই ফলাফল সম্ভবত অস্পষ্ট হবে। আবার ছবি তোলাই ভালো।',
+busy:'পাতা বিশ্লেষণ হচ্ছে…',step1:'ছবি প্রস্তুত করা হচ্ছে',step2:'মডেল চলছে',step3:'মনোযোগ মানচিত্র তৈরি হচ্ছে',
+r_title:'স্ক্যানের ফলাফল',v_photo:'ছবি',v_map:'মনোযোগ মানচিত্র',hint_photo:'মডেল পাতার কোন অংশ দেখে সিদ্ধান্ত নিয়েছে তা দেখতে মনোযোগ মানচিত্র চালু করুন।',
+hint_map:'উষ্ণ রঙের অংশ ফলাফলে সবচেয়ে বেশি প্রভাব ফেলেছে। মানচিত্রটি দেখায় মডেল কোথায় দেখেছে, এটি ঘাটতির প্রমাণ নয়।',hint_demo:'এই ডেমো মানচিত্র পাতার রং থেকে তৈরি; আপনার প্রশিক্ষিত মডেল এর বদলে Grad-CAM মানচিত্র পাঠাতে পারে।',
+low:'কম',high:'বেশি',screening:'প্রাথমিক ফলাফল',lk_H:'সুস্থ মনে হচ্ছে',lk_N:'সম্ভবত নাইট্রোজেন ঘাটতি',lk_P:'সম্ভবত ফসফরাস ঘাটতি',lk_K:'সম্ভবত পটাশিয়াম ঘাটতি',
+conf:'মডেলের আস্থা',conf_ok:'আপনার {t}% সীমার উপরে। এরপর সবচেয়ে কাছে: {c}, {p}।',all:'সব শ্রেণি',
+c_H:'সুস্থ',c_N:'নাইট্রোজেন ঘাটতি',c_P:'ফসফরাস ঘাটতি',c_K:'পটাশিয়াম ঘাটতি',sh_H:'সুস্থ',sh_N:'N',sh_P:'P',sh_K:'K',sh_U:'অস্পষ্ট',sl_N:'N কম',sl_P:'P কম',sl_K:'K কম',
+looks:'দেখতে কেমন',d_H:'পুরো পাতায় সমান সবুজ রং। হলুদ ভাব, বেগুনি আভা বা পোড়া কিনারা নেই।',
+d_N:'ফ্যাকাশে সবুজ থেকে হলুদ রং, সাধারণত নিচের পুরোনো পাতা থেকে শুরু হয়ে পুরো পাতায় সমানভাবে ছড়ায়।',
+d_P:'গাঢ়, নিষ্প্রভ সবুজ পাতা, কখনো বেগুনি বা লালচে আভা। গাছের বৃদ্ধি ধীর হতে পারে।',
+d_K:'পাতার কিনারা থেকে হলুদ ও বাদামি পোড়া দাগ, প্রায়ই কুঁকড়ে যায়। মৌসুমের শেষে উপরের পাতায় দেখা দিতে পারে।',
+similar:'যার মতো দেখাতে পারে',sim_N:['পানির অভাব','পাতার বার্ধক্য'],sim_P:['ঠান্ডাজনিত চাপ','আগাছানাশকের ক্ষতি'],sim_K:['অল্টারনারিয়া পাতার দাগ','ভার্টিসিলিয়াম উইল্ট'],
+act:'পদক্ষেপ নেওয়ার আগে',act1:'মাটি বা পাতার টিস্যু পরীক্ষা করে নিশ্চিত হোন।',act2:'আশেপাশের গাছে রোগ বা পানির অভাব আছে কি না দেখুন।',act3:'সার দেওয়ার আগে স্থানীয় কৃষি সম্প্রসারণ কর্মকর্তার পরামর্শ নিন।',
+h_note:'এই ছবি থেকে কোনো পদক্ষেপের দরকার নেই। নিশ্চিত হতে জমির বিভিন্ন অংশের আরও কয়েকটি পাতা স্ক্যান করুন।',
+r_disc:'এটি ছবিভিত্তিক প্রাথমিক ফলাফল, ল্যাবরেটরিতে রোগনির্ণয় নয়।',save:'ইতিহাসে সংরক্ষণ',saved:'ইতিহাসে সংরক্ষিত',another:'আরেকটি পাতা স্ক্যান',guide_link:'পাতা নির্দেশিকা খুলুন',del:'স্ক্যান মুছুন',
+meta:'মডেল {m} · {d}',demo_note:'ডেমো মডেল: এই ফলাফল আপনার ব্রাউজারে পাতার রং থেকে অনুমান করা, প্রশিক্ষিত CNN থেকে নয়।',
+u_title:'নিশ্চিত ফলাফল পাওয়া যায়নি',u_low:'সর্বোচ্চ মিল {p}, আপনার {t}% সীমার নিচে, তাই কোনো ফলাফল দেখানো হচ্ছে না।',u_q:'ছবিটি মান যাচাইয়ে উত্তীর্ণ হয়নি, তাই কোনো ফলাফল দেখানো হচ্ছে না।',
+scores:'স্কোর',better:'ভালো ছবির জন্য',retake2:'আবার ছবি তুলুন',save_u:'অস্পষ্ট হিসেবে সংরক্ষণ',
+hi_title:'ইতিহাস',search:'প্লট বা জমি দিয়ে খুঁজুন',f_all:'সব',n_scans:'{n}টি স্ক্যান',n_scan:'১টি স্ক্যান',none_f:'কোনো স্ক্যান মেলেনি।',export:'CSV এক্সপোর্ট',
+del_q:'এই স্ক্যানটি মুছবেন?',del_b:'এটি আর ফেরানো যাবে না।',cancel:'বাতিল',deleted:'স্ক্যান মুছে ফেলা হয়েছে',no_plot:'প্লটের নাম নেই',sample_tag:'নমুনা',today:'আজ',yesterday:'গতকাল',
+g_title:'পাতা নির্দেশিকা',g_sub:'প্রতিটি ফলাফলের অর্থ, এবং আর কী দেখতে একই রকম হতে পারে।',about:'মডেল সম্পর্কে',ver:'সংস্করণ',classes:'শ্রেণি',runs:'চলছে',
+run_demo:'এই ব্রাউজারে ডেমো মডেল',run_api:'আপনার মডেল সার্ভার',limits:'জানা সীমাবদ্ধতা',lim1:'দিনের আলোয়, সাদামাটা পটভূমিতে একটি পাতায় সবচেয়ে ভালো কাজ করে।',lim2:'রোগ বা পোকামাকড় শনাক্ত করে না।',lim3:'শুধু তুলা পাতার জন্য তৈরি।',
+p_title:'সেটিংস',thr:'আস্থার সীমা',thr_help:'এর নিচের ফলাফল রোগনির্ণয়ের বদলে অস্পষ্ট হিসেবে দেখানো হয়।',model:'মডেল',m_demo:'ডেমো মডেল, এই ব্রাউজারে',m_api:'আমার মডেল সার্ভার',api_url:'সার্ভারের ঠিকানা',
+api_help:'TulaScan ছবিটি “file” নামের multipart ফিল্ডে {u}/predict-এ পাঠায় এবং এমন JSON উত্তর আশা করে:',
+api_note:'Claude প্রিভিউয়ের ভেতরে অন্য সার্ভারে অনুরোধ আটকে থাকে। মডেল যুক্ত করতে ফাইলটি নিজের কম্পিউটার বা সার্ভার থেকে খুলুন।',
+test:'সংযোগ পরীক্ষা',conn_ok:'সার্ভার সাড়া দিয়েছে',conn_fail:'সার্ভারে পৌঁছানো যায়নি',storage:'সংরক্ষণ',
+st_cloud:'আপনার Claude অ্যাকাউন্টে সংরক্ষিত, যেকোনো ডিভাইসে',st_local:'শুধু এই ব্রাউজারে সংরক্ষিত',st_memory:'সংরক্ষিত হচ্ছে না: এখানে সংরক্ষণের সুবিধা নেই',
+clear:'ইতিহাস মুছুন',clear_q:'সব {n}টি স্ক্যান মুছবেন?',cleared:'ইতিহাস মুছে ফেলা হয়েছে',welcome_again:'স্বাগত পর্দা দেখান',
+api_err:'মডেল সার্ভারে সমস্যা: {e}',save_fail:'সংরক্ষণ করা যায়নি: {e}',csv_saved:'CSV সংরক্ষিত',csv_copied:'CSV ক্লিপবোর্ডে কপি হয়েছে',dl_cancel:'ডাউনলোড বাতিল হয়েছে',dl_fail:'এক্সপোর্ট করা যায়নি',
+back:'ফিরে যান',photo_alt:'পাতার ছবি',heat_alt:'পাতার উপর মনোযোগ মানচিত্র',app_line:'TulaScan প্রোটোটাইপ · ফ্রন্টএন্ড v0.1'
+}};
+const ICONS={home:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',cam:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',book:'<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+prefs:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',back:'<path d="M15 5l-7 7 7 7"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',warn:'<path d="M12 5v9M12 19h.01"/>',x:'<path d="M7 7l10 10M17 7L7 17"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
+upload:'<path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v5h16v-5"/>',leaf:'<path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l8-8"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',
+focus:'<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="3"/>',bg:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 14l4-4 5 5 3-3 4 4"/>',
+retake:'<path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v4h4"/>',trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+q:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.4M12 17h.01"/>',dl:'<path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 20h16"/>',
+globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',save:'<path d="M6 3h12v18l-6-4-6 4z"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>'};
+const LOOK={H:{f:'#3E8A57',v:'#2A6B40'},N:{f:'#C9C66A',v:'#9B9A45'},P:{f:'#34503B',v:'#263B2C'},K:{f:'#7FA35E',v:'#5B7E42'}};
+
+/* ---------- state & helpers ---------- */
+const DEF={lang:'en',threshold:60,source:'demo',apiUrl:'http://localhost:8000',onboarded:false,lastPlot:''};
+const S={prefs:{...DEF},scans:[],current:null,view:'photo',filter:'all',q:'',storage:'memory',dl:null};
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tx=k=>{const L=STR[S.prefs.lang]||STR.en;return L[k]??STR.en[k]??k};
+function t(k,vars){let s=String(tx(k));if(vars)for(const v in vars)s=s.split('{'+v+'}').join(vars[v]);return s}
+const loc=()=>S.prefs.lang==='bn'?'bn-BD':'en-GB';
+const num=n=>new Intl.NumberFormat(loc()).format(n);
+const pct=x=>num(Math.round((x||0)*100))+'%';
+const ic=(n,s=20)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const safeImg=u=>typeof u==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(u)?u:'';
+const isCoarse=()=>matchMedia('(pointer: coarse)').matches||(navigator.maxTouchPoints>0&&matchMedia('(hover: none)').matches);
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const topOf=p=>CLS.reduce((a,b)=>p[b]>p[a]?b:a,'H');
+function fmtDate(ts){const d=new Date(ts),now=new Date(),day=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime();
+ const diff=Math.round((day(now)-day(d))/864e5),time=d.toLocaleTimeString(loc(),{hour:'2-digit',minute:'2-digit'});
+ if(diff===0)return t('today')+', '+time;if(diff===1)return t('yesterday')+', '+time;
+ return d.toLocaleDateString(loc(),{day:'numeric',month:'short',year:d.getFullYear()===now.getFullYear()?undefined:'numeric'})}
+function toast(m){const el=$('#toast');el.textContent=m;el.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>el.classList.remove('on'),2800)}
+function leafSVG(k,size,label){const L=LOOK[k]||LOOK.H;
+ const extra=k==='P'?'<ellipse cx="62" cy="132" rx="20" ry="14" fill="#7A55B5" opacity=".7"/><ellipse cx="140" cy="130" rx="18" ry="13" fill="#7A55B5" opacity=".65"/><ellipse cx="54" cy="70" rx="14" ry="10" fill="#7A55B5" opacity=".55"/>':'';
+ const edge=k==='K'?' stroke="#8A4A22" stroke-width="12" stroke-linejoin="round"':'';
+ return `<svg width="${size}" height="${size}" viewBox="0 0 200 200" ${label?`role="img" aria-label="${esc(label)}"`:'aria-hidden="true"'}><path d="${LEAF}" fill="${L.f}"${edge}/>${extra}<path d="${VEINS} M100 172 L100 196" fill="none" stroke="${L.v}" stroke-width="4" stroke-linecap="round"/></svg>`}
+
+/* ---------- storage: Claude account when available, else this browser ---------- */
+const LS='tulascan.v1';
+const Local={ok:(()=>{try{localStorage.setItem('__t','1');localStorage.removeItem('__t');return true}catch(e){return false}})(),
+ load(){try{return JSON.parse(localStorage.getItem(LS)||'null')}catch(e){return null}},
+ save(){if(!this.ok)return;try{localStorage.setItem(LS,JSON.stringify({prefs:S.prefs,scans:S.scans}))}catch(e){if(S.storage!=='cloud')toast(t('save_fail',{e:'storage full'}))}}};
+let cloud=null,prefsTimer=null,prefsChain=Promise.resolve();
+function setPref(k,v){S.prefs[k]=v;Local.save();
+ if(cloud){clearTimeout(prefsTimer);prefsTimer=setTimeout(()=>{const body={...S.prefs};prefsChain=prefsChain.then(()=>cloud.prefs.set(body)).catch(()=>{})},600)}}
+async function saveScan(s){S.scans.unshift(s);Local.save();
+ if(cloud){try{await cloud.col.doc(s.id).set(s)}catch(e){toast(t('save_fail',{e:(e&&e.code)||'error'}))}}}
+async function removeScan(id){S.scans=S.scans.filter(s=>s.id!==id);Local.save();if(cloud){try{await cloud.col.doc(id).delete()}catch(e){}}}
+async function initCloud(){
+ if(!window.claude||typeof window.claude.use!=='function')return;
+ try{
+  const [db,user,dl]=await Promise.all([claude.use('db'),claude.use('user'),claude.use('downloads')]);
+  S.dl=dl||null;
+  if(!db||!user)return;
+  const uid=await user.id();if(!uid)return;
+  const col=db.doc('data/users/'+uid+'/profile').collection('scans'),prefs=db.doc('data/users/'+uid+'/prefs');
+  const timer=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
+  const [snap,ps]=await Promise.race([Promise.all([col.orderBy('createdAt','desc').limit(500).get(),prefs.get()]),timer]);
+  cloud={col,prefs};
+  const remote=snap.docs.map(d=>({...d.data()})).filter(s=>s&&s.id);
+  const ids=new Set(remote.map(s=>s.id)),localOnly=S.scans.filter(s=>!ids.has(s.id));
+  for(const s of localOnly){try{await col.doc(s.id).set(s)}catch(e){}}
+  S.scans=[...remote,...localOnly].sort((a,b)=>b.createdAt-a.createdAt);
+  if(ps.exists)S.prefs={...DEF,...S.prefs,...ps.data()};else await prefs.set({...S.prefs});
+  S.storage='cloud';Local.save();render();
+ }catch(e){/* stay on this browser's storage */}
+}
+
+/* ---------- image pipeline ---------- */
+function scaled(src,sw,sh,max){const k=Math.min(1,max/Math.max(sw,sh)),c=document.createElement('canvas');
+ c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));const x=c.getContext('2d',{willReadFrequently:true});
+ x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(src,0,0,c.width,c.height);return c}
+function hsv(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;
+ if(d){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360}return[h,mx?d/mx:0,mx]}
+const isBrown=(h,s,v)=>(h<38||h>345)&&s>0.35&&v>0.12&&v<0.8;
+function analyzeGrid(cv){
+ const W=cv.width,H=cv.height,N=W*H,d=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data;
+ const hue=new Float32Array(N),sat=new Float32Array(N),val=new Float32Array(N),gray=new Float32Array(N),plant=new Uint8Array(N);
+ let sumL=0,clip=0;
+ for(let i=0;i<N;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2],[h,s,v]=hsv(r,g,b);hue[i]=h;sat[i]=s;val[i]=v;
+  const L=.299*r+.587*g+.114*b;gray[i]=L;sumL+=L;if(L>246)clip++;
+  if(s>0.2&&v>0.15&&((h>=35&&h<=170)||(h>=250&&h<=345)))plant[i]=1}
+ // grow the leaf region into connected brown (scorched) margins, then pad by one pixel
+ const leaf=plant.slice();
+ for(let it=0;it<6;it++){const add=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;if(leaf[i]||!isBrown(hue[i],sat[i],val[i]))continue;
+  if((x>0&&leaf[i-1])||(x<W-1&&leaf[i+1])||(y>0&&leaf[i-W])||(y<H-1&&leaf[i+W]))add.push(i)}if(!add.length)break;for(const i of add)leaf[i]=1}
+ const zone=leaf.slice();for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;if(leaf[i])continue;
+  if((x>0&&leaf[i-1])||(x<W-1&&leaf[i+1])||(y>0&&leaf[i-W])||(y<H-1&&leaf[i+W]))zone[i]=1}
+ let nl=0;for(let i=0;i<N;i++)nl+=leaf[i];
+ let bt=0,bl=0;for(let x=0;x<W;x++){bt+=leaf[x]+leaf[(H-1)*W+x];bl+=2}for(let y=1;y<H-1;y++){bt+=leaf[y*W]+leaf[y*W+W-1];bl+=2}
+ let gs=0,gn=0;for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;if(zone[i]||zone[i+1]||zone[i+W])continue;gs+=Math.abs(gray[i+1]-gray[i])+Math.abs(gray[i+W]-gray[i]);gn++}
+ let nz=0,G=0,Y=0,Pu=0,Dk=0,Br=0;
+ for(let i=0;i<N;i++){if(!zone[i])continue;const h=hue[i],s=sat[i],v=val[i];if(!(s>0.22&&v>0.2))continue;nz++;
+  if(h>=75&&h<170){if(v<0.33)Dk++;else G++}else if(h>=38&&h<75){if(v>0.4)Y++;else G+=.5}else if(h>=250&&h<=345)Pu++;else if(isBrown(h,s,v))Br++}
+ const f=nz?{G:G/nz,Y:Y/nz,Pu:Pu/nz,Dk:Dk/nz,Br:Br/nz}:{G:0,Y:0,Pu:0,Dk:0,Br:0};
+ return{W,H,hue,sat,val,zone,bright:sumL/N,clip:clip/N,cover:nl/N,edge:bt/bl,bgBusy:gn>N*0.05?gs/gn:0,f,nz}}
+function lapVar(cv){const W=cv.width,H=cv.height,d=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data,g=new Float32Array(W*H);
+ for(let i=0;i<W*H;i++)g[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];let s=0,s2=0,n=0;
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x,l=4*g[i]-g[i-1]-g[i+1]-g[i-W]-g[i+W];s+=l;s2+=l*l;n++}const m=s/n;return s2/n-m*m}
+function quality(A){const ok=v=>({st:'good',v});return{
+ bright:A.bright<55?{st:'bad',v:'v_dark',n:'n_dark'}:(A.bright>225||A.clip>0.35)?{st:'bad',v:'v_glare',n:'n_glare'}:A.clip>0.12?{st:'warn',v:'v_glare',n:'n_glare'}:ok('v_good'),
+ sharp:A.sharp<25?{st:'bad',v:'v_blur',n:'n_blur'}:A.sharp<60?{st:'warn',v:'v_soft',n:'n_soft'}:ok('v_good'),
+ leaf:A.cover<0.04?{st:'bad',v:'v_none',n:'n_none'}:A.cover<0.12?{st:'warn',v:'v_small',n:'n_small'}:ok('v_found'),
+ edges:A.edge>0.1?{st:'warn',v:'v_cut',n:'n_cut'}:ok('v_yes'),
+ bg:A.bgBusy>4?{st:'warn',v:'v_busy',n:'n_busy'}:ok('v_plain')}}
+/* Demo classifier: colour-feature scores -> softmax. Replace with your CNN through Preferences > Model. */
+function demoPredict(A){const f=A.f,s={H:5*f.G,N:9*f.Y,P:9*(f.Pu+0.6*f.Dk),K:22*f.Br},T=0.55,m=Math.max(s.H,s.N,s.P,s.K),e={};let z=0;
+ for(const k of CLS){e[k]=Math.exp((s[k]-m)*T);z+=e[k]}for(const k of CLS)e[k]/=z;return e}
+function blur1(a,W,H,r){const t=new Float32Array(a.length),n=2*r+1,cx=v=>v<0?0:v>W-1?W-1:v,cy=v=>v<0?0:v>H-1?H-1:v;
+ for(let y=0;y<H;y++){let acc=0;for(let x=-r;x<=r;x++)acc+=a[y*W+cx(x)];for(let x=0;x<W;x++){t[y*W+x]=acc/n;acc+=a[y*W+cx(x+r+1)]-a[y*W+cx(x-r)]}}
+ for(let x=0;x<W;x++){let acc=0;for(let y=-r;y<=r;y++)acc+=t[cy(y)*W+x];for(let y=0;y<H;y++){a[y*W+x]=acc/n;acc+=t[cy(y+r+1)*W+x]-t[cy(y-r)*W+x]}}return a}
+const STOPS=[[0,[38,58,150]],[.38,[34,160,170]],[.68,[242,212,58]],[1,[226,48,26]]];
+function cmap(v){for(let i=1;i<STOPS.length;i++)if(v<=STOPS[i][0]){const[a,ca]=STOPS[i-1],[b,cb]=STOPS[i],u=(v-a)/(b-a);return ca.map((c,j)=>Math.round(c+(cb[j]-c)*u))}return STOPS[3][1]}
+function heatFor(A,k){const{W,H,hue,sat,val,zone}=A,N=W*H,m=new Float32Array(N),z=new Float32Array(N);
+ for(let i=0;i<N;i++){if(!zone[i])continue;z[i]=1;const h=hue[i],s=sat[i],v=val[i],c=s>0.22&&v>0.2;let w;
+  if(k==='N')w=c&&h>=38&&h<75&&v>.4?1:c&&h>=75&&h<110?.25:.04;
+  else if(k==='P')w=c&&h>=250&&h<=345?1:c&&h>=75&&h<170&&v<.33?.55:.04;
+  else if(k==='K')w=c&&isBrown(h,s,v)?1:c&&h>=38&&h<62?.35:.04;
+  else w=c&&h>=75&&h<170?.5+.5*s:.08;m[i]=w}
+ const r=Math.max(2,Math.round(Math.max(W,H)/40));for(let p=0;p<3;p++)blur1(m,W,H,r);blur1(z,W,H,1);blur1(z,W,H,1);
+ let mx=0;for(let i=0;i<N;i++){m[i]*=z[i];if(m[i]>mx)mx=m[i]}
+ const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),img=x.createImageData(W,H),o=img.data;
+ for(let i=0;i<N;i++){const v=mx?m[i]/mx:0,[R,G,B]=cmap(v);o[i*4]=R;o[i*4+1]=G;o[i*4+2]=B;o[i*4+3]=z[i]>0.02?Math.round(255*Math.min(1,z[i])*(0.22+0.6*v)):46}
+ x.putImageData(img,0,0);return c.toDataURL('image/png')}
+function dataURLtoBlob(u){const[h,b]=u.split(','),mime=(h.match(/:(.*?);/)||[])[1]||'image/jpeg',bin=atob(b),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return new Blob([a],{type:mime})}
+const apiBase=()=>(S.prefs.apiUrl||'').trim().replace(/\/+$/,'');
+async function predictRemote(blob){const base=apiBase();if(!/^https?:\/\//.test(base))throw new Error('invalid address');
+ const fd=new FormData();fd.append('file',blob,'leaf.jpg');const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),20000);let r;
+ try{r=await fetch(base+'/predict',{method:'POST',body:fd,signal:ctl.signal})}finally{clearTimeout(tm)}
+ if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json(),p=j.probabilities||j.probs||{};
+ const pick=(...ks)=>{for(const k of ks)if(typeof p[k]==='number')return p[k];return 0};
+ const probs={H:pick('healthy','Healthy','H','h'),N:pick('n','N','nitrogen'),P:pick('p','P','phosphorus'),K:pick('k','K','potassium')};
+ const sum=probs.H+probs.N+probs.P+probs.K;if(!(sum>0))throw new Error('no probabilities in reply');for(const k of CLS)probs[k]/=sum;
+ return{probs,heat:safeImg(j.heatmap)||null,model:typeof j.model_version==='string'?j.model_version.slice(0,40):'server'}}
+async function useSource(src,w,h,sample){
+ const photo=scaled(src,w,h,480).toDataURL('image/jpeg',0.8),big=scaled(src,w,h,1024).toDataURL('image/jpeg',0.9);
+ const A=analyzeGrid(scaled(src,w,h,128));A.sharp=lapVar(scaled(src,w,h,256));
+ S.current={photo,big,A,q:quality(A),plot:S.prefs.lastPlot||'',stage:'unknown',sample:sample||null,scan:null,saved:false};S.view='photo';
+ if(location.hash==='#check')render(true);else location.hash='#check'}
+function loadFile(file){if(!file)return;if(file.type&&!file.type.startsWith('image/')){toast(t('bad_file'));return}
+ const url=URL.createObjectURL(file),img=new Image();busy('read');
+ img.onload=async()=>{try{await useSource(img,img.naturalWidth,img.naturalHeight,null)}finally{URL.revokeObjectURL(url);busy(false)}};
+ img.onerror=()=>{URL.revokeObjectURL(url);busy(false);toast(t('bad_file'))};img.src=url}
+/* Drawn sample leaves so the flow can be tried without a real leaf */
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let q=Math.imul(a^a>>>15,1|a);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296}}
+const SAMPLES={};
+function makeSample(kind){if(SAMPLES[kind])return SAMPLES[kind];const Z=600,c=document.createElement('canvas');c.width=c.height=Z;
+ const x=c.getContext('2d',{willReadFrequently:true}),R=rng(kind.charCodeAt(0)*977+kind.length),soil=kind==='N'||kind==='poor';
+ if(soil){x.fillStyle='#54483A';x.fillRect(0,0,Z,Z);for(let i=0;i<110;i++){x.fillStyle=R()<.5?'#6A5E50':'#3D352D';x.globalAlpha=.6;x.beginPath();x.ellipse(R()*Z,R()*Z,8+R()*40,6+R()*26,R()*3,0,7);x.fill()}x.globalAlpha=1}
+ else{const g=x.createLinearGradient(0,0,Z,Z);g.addColorStop(0,'#EFEBE3');g.addColorStop(1,'#E0DBD0');x.fillStyle=g;x.fillRect(0,0,Z,Z)}
+ const leaf=new Path2D(LEAF),veins=new Path2D(VEINS+' M100 172 L100 196'),poor=kind==='poor',sc=poor?3.3:2.55;
+ x.save();x.translate(300,300);x.rotate(poor?0.3:-0.12);x.translate(-300,-300);x.translate(poor?330-100*sc:300-100*sc,poor?150-100*sc:292-100*sc);x.scale(sc,sc);
+ x.save();x.shadowColor='rgba(0,0,0,.28)';x.shadowBlur=16;x.shadowOffsetY=5;x.fillStyle='#2f3a30';x.fill(leaf);x.restore();
+ const grad=(a,b,mid)=>{const g=x.createLinearGradient(0,10,0,185);g.addColorStop(0,a);if(mid)g.addColorStop(.35,mid);g.addColorStop(1,b);return g};
+ const fills={H:[grad('#4E9A62','#3A8452'),'#2A6B40'],poor:[grad('#4E9A62','#3A8452'),'#2A6B40'],N:[grad('#93B25A','#D6CB6C','#C3C468'),'#A19C4C'],P:[grad('#38553E','#2F4A36'),'#263B2C'],K:[grad('#83A85F','#77A05A'),'#5B7E42']}[kind];
+ x.fillStyle=fills[0];x.fill(leaf);x.save();x.clip(leaf);
+ if(kind==='P'){x.fillStyle='rgba(122,85,181,.72)';for(const[a,b,rx,ry]of[[62,132,24,18],[140,130,22,16],[54,70,16,12],[150,68,15,11],[100,150,18,10]]){x.beginPath();x.ellipse(a,b,rx,ry,0,0,7);x.fill()}}
+ if(kind==='K'){x.strokeStyle='#8A4A22';x.lineWidth=17;x.lineJoin='round';x.stroke(leaf);x.fillStyle='#7A3F1C';for(const[a,b,r]of[[44,62,5],[160,60,6],[50,132,5],[152,136,6],[100,22,4],[30,100,4]]){x.beginPath();x.arc(a,b,r,0,7);x.fill()}}
+ x.restore();x.strokeStyle=fills[1];x.lineWidth=2.4;x.lineCap='round';x.stroke(veins);x.restore();
+ if(poor){const s=document.createElement('canvas');s.width=s.height=Z;const sx=s.getContext('2d');if('filter' in sx){sx.filter='blur(9px)';sx.drawImage(c,0,0)}else{const m=document.createElement('canvas');m.width=m.height=96;m.getContext('2d').drawImage(c,0,0,96,96);sx.drawImage(m,0,0,Z,Z)}x.drawImage(s,0,0,Z,Z);
+  x.globalCompositeOperation='multiply';x.fillStyle='rgb(82,82,86)';x.fillRect(0,0,Z,Z);x.globalCompositeOperation='source-over'}
+ else{const id=x.getImageData(0,0,Z,Z),p=id.data,amp=soil?16:7;for(let i=0;i<p.length;i+=4){const n=(R()-.5)*amp*2;p[i]+=n;p[i+1]+=n;p[i+2]+=n}x.putImageData(id,0,0)}
+ return SAMPLES[kind]={canvas:c,thumb:scaled(c,Z,Z,180).toDataURL('image/jpeg',0.8)}}
+
+/* ---------- busy overlay & dialog ---------- */
+function busy(mode){const b=$('#busy');if(!mode){b.hidden=true;b.innerHTML='';return}
+ const img=mode==='run'&&S.current?`<img src="${safeImg(S.current.photo)}" alt="">`:leafSVG('H',190);
+ b.innerHTML=`<div class="bbox" role="status" aria-live="polite"><div class="bart">${img}<span class="scanline"></span></div><p class="btitle">${esc(t(mode==='run'?'busy':'reading'))}</p>${mode==='run'?`<ol class="steps">${['step1','step2','step3'].map((k,i)=>`<li data-i="${i}">${ic('check',16)}<span>${esc(t(k))}</span></li>`).join('')}</ol>`:''}</div>`;b.hidden=false}
+function stepTo(i){$$('#busy .steps li').forEach(li=>{const n=+li.dataset.i;li.className=n<i?'done':n===i?'now':''})}
+function confirmBox(title,body,ok){return new Promise(res=>{const m=$('#modal'),prev=document.activeElement;
+ m.innerHTML=`<div class="scrim"><div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="mt" aria-describedby="mb"><h2 id="mt">${esc(title)}</h2><p id="mb" class="muted">${esc(body)}</p><div class="mrow"><button class="btn btn-out" data-m="0">${esc(t('cancel'))}</button><button class="btn btn-danger" data-m="1">${esc(ok)}</button></div></div></div>`;
+ const kd=e=>{if(e.key==='Escape')done(false)};const done=v=>{m.innerHTML='';m.onclick=null;document.removeEventListener('keydown',kd);if(prev&&prev.focus)prev.focus();res(v)};
+ document.addEventListener('keydown',kd);m.onclick=e=>{const b=e.target.closest('[data-m]');if(b)done(b.dataset.m==='1');else if(e.target.classList.contains('scrim'))done(false)};
+ m.querySelector('[data-m="0"]').focus()})}
+
+/* ---------- views ---------- */
+const head=(title,back,extra='')=>`<div class="headrow">${back?`<a class="iconbtn" href="${back}" aria-label="${esc(t('back'))}">${ic('back',22)}</a>`:''}<h1 class="title grow" tabindex="-1">${esc(title)}</h1>${extra}</div>`;
+const langSeg=()=>`<div class="seg" role="group" aria-label="${esc(t('lang'))}"><button data-act="lang" data-l="en" aria-pressed="${S.prefs.lang==='en'}">English</button><button class="bn" data-act="lang" data-l="bn" lang="bn" aria-pressed="${S.prefs.lang==='bn'}">বাংলা</button></div>`;
+const frameArt=(svg,cls='')=>`<div class="frame ${cls}"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span>${svg}</div>`;
+const notice=(strong,body)=>`<div class="notice">${ic('info',18)}<p>${strong?`<strong>${esc(strong)}</strong> `:''}${esc(body)}</p></div>`;
+const shortLabel=s=>s.status==='unclear'?t('u_title'):t('lk_'+s.top);
+const kindOf=s=>s.status==='unclear'?'U':s.top;
+const modelName=s=>s.source==='api'?String(s.model||'server'):'Demo v1.0';
+function itemHTML(s,withDel){return `<div class="item"><a class="ilink" href="#result-${esc(s.id)}"><img src="${safeImg(s.photo)}" alt="" loading="lazy"><span class="itx"><span class="it1">${esc(shortLabel(s))}</span><span class="it2">${esc(s.plot||t('no_plot'))} · ${esc(fmtDate(s.createdAt))}${s.sample?' · '+esc(t('sample_tag')):''}</span></span><span class="pill ${kindOf(s)}">${pct(s.conf)}</span></a>${withDel?`<button class="iconbtn" data-act="del" data-id="${esc(s.id)}" aria-label="${esc(t('del'))}">${ic('trash',18)}</button>`:''}</div>`}
+function pickButtons(cls){return isCoarse()
+ ?`<button class="btn ${cls[0]}" data-act="pick-cam">${ic('cam',19)}${esc(t('take'))}</button><button class="btn ${cls[1]}" data-act="pick-gal">${ic('image',19)}${esc(t('gallery'))}</button>`
+ :`<button class="btn ${cls[0]}" data-act="pick-gal">${ic('upload',19)}${esc(t('upload'))}</button>`}
+const TIPS=[['leaf','tip1'],['sun','tip2'],['bg','tip3'],['focus','tip4']];
+
+function welcomeView(){return `<div class="welcome"><div class="wbox">
+ <div class="wbrand"><span class="brand"><span class="mark" style="width:38px;height:38px">${ic('leaf',21)}</span><span class="bname">TulaScan</span></span><div style="width:200px">${langSeg()}</div></div>
+ <div class="wart" aria-hidden="true"><span class="ring r1"></span><span class="ring r2"></span>${frameArt(leafSVG('H',200))}<span class="sl" style="left:30%;right:30%"></span><span class="nb N">N</span><span class="nb P">P</span><span class="nb K">K</span></div>
+ <div class="wtext"><h1 class="title" tabindex="-1">${esc(t('w_title'))}</h1><p class="lead">${esc(t('w_body'))}</p>${notice(t('disc_s'),t('disc_b'))}
+ <div><button class="btn btn-pri" data-act="start" style="min-width:220px">${esc(t('start'))}${ic('arrow',18)}</button></div></div></div></div>`}
+
+function homeView(){const c={H:0,N:0,P:0,K:0,U:0};for(const s of S.scans)c[kindOf(s)]++;
+ return `<div class="homegrid"><section class="hero">${leafSVG('H',190).replace('<svg','<svg class="deco"')}<div class="stackv tight" style="position:relative"><h1 tabindex="-1">${esc(t('h_title'))}</h1><p>${esc(t('h_body'))}</p></div>
+  <div class="btns">${pickButtons(['btn-w','btn-o'])}<a class="btn btn-o" href="#scan">${esc(t('try_sample'))}</a></div></section>
+  <section class="card"><div class="sechead" style="margin:0"><h2 class="sec">${esc(t('summary'))}</h2><span class="small muted">${esc(t('total',{n:num(S.scans.length)}))}</span></div>
+  <div class="stats">${['H','N','P','K','U'].map(k=>`<div class="stat ${k}"><b>${num(c[k])}</b>${esc(t('NPK'.includes(k)?'sl_'+k:'sh_'+k))}</div>`).join('')}</div></section></div>
+ <h2 class="sec" style="margin:24px 0 0">${esc(t('tips'))}</h2><div class="tips">${TIPS.map(([i,k])=>`<div class="tip"><span class="tic">${ic(i,18)}</span>${esc(t(k))}</div>`).join('')}</div>
+ <div class="sechead"><h2 class="sec">${esc(t('recent'))}</h2>${S.scans.length?`<a class="lnk" href="#history">${esc(t('see_all'))}</a>`:''}</div>
+ <div class="list">${S.scans.length?S.scans.slice(0,4).map(s=>itemHTML(s,false)).join(''):`<div class="empty">${ic('leaf',28)}<p>${esc(t('empty'))}</p></div>`}</div>`}
+
+function scanView(){return `${head(t('s_title'),'#home')}<div class="scangrid">
+ <div class="vf" data-drop>${frameArt(`<svg class="ghost" viewBox="0 0 200 200" aria-hidden="true"><path d="${LEAF}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6 6"/></svg>`)}<span class="vfpill">${esc(t('s_hint'))}</span><span class="vfdrop">${ic('upload',16)}${esc(t('drop'))}</span></div>
+ <div class="stackv"><div class="stackv tight">${pickButtons(['btn-pri block','btn-out block'])}${isCoarse()?'':`<p class="small muted">${esc(t('drop_desk'))}</p>`}</div>
+ <section class="card"><h3>${esc(t('tips'))}</h3>${TIPS.map(([i,k])=>`<div class="tiprow"><span class="tic">${ic(i,16)}</span>${esc(t(k))}</div>`).join('')}</section></div></div>
+ <section style="margin-top:24px"><h2 class="sec">${esc(t('samples'))}</h2><p class="small muted" style="margin-top:2px">${esc(t('samples_note'))}</p>
+ <div class="samples">${SAMPLE_KINDS.map(k=>`<button class="sample" data-act="sample" data-k="${k}"><img data-sample="${k}" alt="" ${SAMPLES[k]?`src="${SAMPLES[k].thumb}"`:''}><span>${esc(t('smp_'+k))}</span></button>`).join('')}</div></section>`}
+
+function checkView(){const c=S.current,q=c.q,bad=QK.some(k=>q[k].st==='bad');
+ const stages=['unknown','seedling','squaring','flowering','boll'];
+ return `${head(t('c_title'),'#scan')}<div class="two"><div class="stick">${photoBox(c.photo,null)}</div><div class="stackv">
+ <section class="card"><h3>${esc(t('quality'))}</h3>${QK.map(k=>{const it=q[k];return `<div class="qrow"><span class="st ${it.st}">${ic(it.st==='good'?'check':it.st==='warn'?'warn':'x',15)}</span><span class="qt"><span>${esc(t('q_'+k))}</span>${it.n?`<span class="small muted">${esc(t(it.n))}</span>`:''}</span><b class="qv ${it.st}">${esc(t(it.v))}</b></div>`}).join('')}</section>
+ ${bad?notice('',t('q_warn')):''}
+ <div class="field"><label for="plot">${esc(t('plot'))} <span>${esc(t('optional'))}</span></label><input id="plot" type="text" maxlength="60" autocomplete="off" placeholder="${esc(t('plot_ph'))}" value="${esc(c.plot)}"></div>
+ <div class="field"><label for="stage">${esc(t('stage'))} <span>${esc(t('optional'))}</span></label><select id="stage">${stages.map(s=>`<option value="${s}"${c.stage===s?' selected':''}>${esc(t('st_'+s))}</option>`).join('')}</select></div>
+ <div class="btns"><a class="btn btn-out" href="#scan">${ic('retake',18)}${esc(t('retake'))}</a><button class="btn btn-pri" data-act="analyze">${esc(t('analyze'))}${ic('arrow',18)}</button></div></div></div>`}
+
+function photoBox(src,heat){return `<div class="photo"><div class="pwrap"><img src="${safeImg(src)}" alt="${esc(t('photo_alt'))}">${heat?`<img class="hm" src="${safeImg(heat)}" alt="${esc(t('heat_alt'))}">`:''}</div>${heat?`<div class="legend">${esc(t('low'))}<i></i>${esc(t('high'))}</div>`:''}</div>`}
+const order=s=>[...CLS].sort((a,b)=>s.probs[b]-s.probs[a]);
+function actButtons(s,isCur){const saved=isCur&&S.current.saved;
+ return `${isCur&&!saved?`<button class="btn btn-pri" data-act="save">${ic('save',18)}${esc(t(s.status==='unclear'?'save_u':'save'))}</button>`:''}${saved?`<span class="savedtag">${ic('check',18)}${esc(t('saved'))}</span>`:''}`}
+function resultView(s,isCur){const back=isCur?'#check':'#history';if(s.status==='unclear')return unclearView(s,isCur,back);
+ const k=s.top,o=order(s),next=o[1],map=S.view==='map'&&s.heat;
+ return `${head(t('r_title'),back)}<div class="two"><div class="stackv stick">
+ ${s.heat?`<div class="seg" role="group" aria-label="${esc(t('v_map'))}"><button data-act="view" data-v="photo" aria-pressed="${!map}">${esc(t('v_photo'))}</button><button data-act="view" data-v="map" aria-pressed="${!!map}">${esc(t('v_map'))}</button></div>`:''}
+ ${photoBox(s.photo,map?s.heat:null)}<p class="small muted">${esc(t(map?'hint_map':'hint_photo'))}${map&&s.source!=='api'?' '+esc(t('hint_demo')):''}</p></div>
+ <div class="stackv"><section class="card"><span class="rlabel">${esc(t('screening'))}</span><div class="rhead"><span class="cb lg ${k}">${k}</span><h2 class="rtitle">${esc(t('lk_'+k))}</h2></div>
+  <div class="confrow"><span>${esc(t('conf'))}</span><b>${pct(s.conf)}</b></div><div class="bar" role="img" aria-label="${esc(t('conf'))} ${pct(s.conf)}"><i style="width:${(s.conf*100).toFixed(1)}%;background:var(--${k})"></i></div>
+  <p class="small muted" style="margin-top:8px">${esc(t('conf_ok',{t:num(s.threshold),c:t('c_'+next),p:pct(s.probs[next])}))}</p></section>
+ <section class="card"><h3>${esc(t('all'))}</h3>${o.map(c=>`<div class="crow"><div class="crt"><span class="cb ${c}">${c}</span><span class="cn2">${esc(t('c_'+c))}</span><b>${pct(s.probs[c])}</b></div><div class="bar sm"><i style="width:${(s.probs[c]*100).toFixed(1)}%;background:var(--${c})"></i></div></div>`).join('')}</section>
+ <section class="card"><h3>${esc(t('looks'))}</h3><p>${esc(t('d_'+k))}</p>${k!=='H'?simHTML(k):''}<a class="lnk" href="#guide">${esc(t('guide_link'))}</a></section>
+ <section class="card"><h3>${esc(t('act'))}</h3>${k==='H'?`<p>${esc(t('h_note'))}</p>`:`<ol class="olist">${['act1','act2','act3'].map((a,i)=>`<li><span class="num">${num(i+1)}</span>${esc(t(a))}</li>`).join('')}</ol>`}</section>
+ ${notice('',t('r_disc'))}${s.source!=='api'?`<p class="small muted">${esc(t('demo_note'))}</p>`:''}
+ <div class="btns">${actButtons(s,isCur)}<a class="btn btn-out" href="#scan">${esc(t('another'))}</a>${isCur?'':`<button class="btn btn-ghost danger" data-act="del" data-id="${esc(s.id)}">${ic('trash',18)}${esc(t('del'))}</button>`}</div>
+ <p class="small muted center">${esc(t('meta',{m:modelName(s),d:fmtDate(s.createdAt)}))}${s.plot?' · '+esc(s.plot):''}</p></div></div>`}
+const simHTML=k=>`<div class="sim"><span class="muted">${esc(t('similar'))}</span>${tx('sim_'+k).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div>`;
+function unclearView(s,isCur,back){const o=order(s),q=s.quality||{},notes=QK.filter(k=>q[k]&&q[k].st!=='good'&&q[k].n).map(k=>[k,q[k].n]);
+ const tips=notes.length?notes:[['sun','g1'],['leaf','g2']],iconFor={bright:'sun',sharp:'focus',leaf:'leaf',edges:'focus',bg:'bg',sun:'sun'};
+ return `${head(t('r_title'),back)}<div class="two"><div class="stick">${photoBox(s.photo,null)}</div><div class="stackv">
+ <section class="stackv tight"><div class="utop"><span class="uicon">${ic('q',22)}</span><h2 class="rtitle">${esc(t('u_title'))}</h2></div>
+ <p>${esc(s.reasons&&s.reasons.length?t('u_q'):t('u_low',{p:pct(s.conf),t:num(s.threshold)}))}</p></section>
+ <section class="card"><h3>${esc(t('scores'))}</h3><div class="stacked" role="img" aria-label="${esc(o.map(c=>t('c_'+c)+' '+pct(s.probs[c])).join(', '))}">${o.map(c=>`<span style="width:${(s.probs[c]*100).toFixed(1)}%;background:var(--${c})"></span>`).join('')}</div>
+ <div class="lgd">${o.map(c=>`<span><i style="background:var(--${c})"></i>${esc(t('sh_'+c))}<b>${pct(s.probs[c])}</b></span>`).join('')}</div></section>
+ <section class="card"><h3>${esc(t('better'))}</h3><ul class="olist">${tips.map(([k,n])=>`<li><span class="num">${ic(iconFor[k]||'leaf',14)}</span>${esc(t(n))}</li>`).join('')}</ul></section>
+ <div class="btns"><a class="btn btn-pri" href="#scan">${ic('retake',18)}${esc(t('retake2'))}</a>${isCur&&!S.current.saved?`<button class="btn btn-out" data-act="save">${esc(t('save_u'))}</button>`:''}${isCur&&S.current.saved?`<span class="savedtag">${ic('check',18)}${esc(t('saved'))}</span>`:''}${isCur?'':`<button class="btn btn-ghost danger" data-act="del" data-id="${esc(s.id)}">${ic('trash',18)}${esc(t('del'))}</button>`}</div>
+ <p class="small muted center">${esc(t('meta',{m:modelName(s),d:fmtDate(s.createdAt)}))}${s.plot?' · '+esc(s.plot):''}</p></div></div>`}
+
+function filtered(){const q=S.q.trim().toLowerCase();return S.scans.filter(s=>(S.filter==='all'||kindOf(s)===S.filter)&&(!q||(s.plot||'').toLowerCase().includes(q)))}
+function countLabel(n){return n===1&&S.prefs.lang==='en'?t('n_scan'):t('n_scans',{n:num(n)})}
+function listHTML(){const f=filtered();if(!S.scans.length)return `<div class="list"><div class="empty">${ic('leaf',28)}<p>${esc(t('empty'))}</p><a class="btn btn-pri" href="#scan">${esc(t('h_title'))}</a></div></div>`;
+ return f.length?`<div class="list">${f.map(s=>itemHTML(s,true)).join('')}</div>`:`<div class="list"><div class="empty"><p>${esc(t('none_f'))}</p></div></div>`}
+function historyView(){const f=filtered();
+ return `${head(t('hi_title'),'',S.scans.length?`<button class="pillbtn" data-act="export">${ic('dl',16)}${esc(t('export'))}</button>`:'')}
+ <div class="stackv" style="gap:12px"><p class="small muted" id="hcount">${esc(countLabel(f.length))}</p>
+ <div class="search">${ic('search',18)}<label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">${esc(t('search'))}</label><input id="q" type="search" placeholder="${esc(t('search'))}" value="${esc(S.q)}" autocomplete="off"></div>
+ <div class="chips" role="group" aria-label="${esc(t('hi_title'))}">${['all','H','N','P','K','U'].map(k=>`<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${S.filter===k}">${esc(k==='all'?t('f_all'):t('sh_'+k))}</button>`).join('')}</div>
+ <div id="hlist">${listHTML()}</div></div>`}
+
+function guideView(){const src=S.prefs.source==='api';const last=S.scans.find(s=>s.source==='api');
+ return `${head(t('g_title'),'')}<p class="muted" style="margin:-8px 0 18px">${esc(t('g_sub'))}</p><div class="ggrid">
+ ${CLS.map(k=>`<article class="card gcard"><div class="gthumb ${k}">${leafSVG(k,62,t('c_'+k))}</div><div class="stackv tight"><h2 class="gh"><span class="cb ${k}">${k}</span>${esc(t('c_'+k))}</h2><p>${esc(t('d_'+k))}</p>${k!=='H'?simHTML(k):''}</div></article>`).join('')}</div>
+ <section class="card soft" style="margin-top:16px"><h3>${esc(t('about'))}</h3><dl>
+ <div><dt>${esc(t('ver'))}</dt><dd>${esc(src?(last?last.model:'—'):'Demo v1.0')}</dd></div><div><dt>${esc(t('classes'))}</dt><dd>${esc(t('c_H'))}, N, P, K</dd></div>
+ <div><dt>${esc(t('runs'))}</dt><dd>${esc(t(src?'run_api':'run_demo'))}</dd></div><div><dt>${esc(t('thr'))}</dt><dd>${num(S.prefs.threshold)}%</dd></div></dl>
+ <h3 style="margin-top:16px">${esc(t('limits'))}</h3><ul class="lim">${['lim1','lim2','lim3'].map(k=>`<li>${esc(t(k))}</li>`).join('')}</ul></section>`}
+
+function prefsView(){const api=S.prefs.source==='api',u=apiBase()||'http://localhost:8000';
+ const sample=`{\n  "probabilities": {"healthy": 0.06, "n": 0.82, "p": 0.03, "k": 0.09},\n  "heatmap": "data:image/png;base64,...",\n  "model_version": "v1.0"\n}`;
+ return `${head(t('p_title'),'')}<div class="stackv" style="max-width:640px">
+ <section class="card stackv"><div class="field"><span class="flabel">${esc(t('lang'))}</span>${langSeg()}</div></section>
+ <section class="card stackv"><div class="field"><label for="thr">${esc(t('thr'))}: <b id="thrv">${num(S.prefs.threshold)}%</b></label><input id="thr" type="range" min="40" max="90" step="5" value="${S.prefs.threshold}"><span class="small muted">${esc(t('thr_help'))}</span></div></section>
+ <section class="card stackv"><span class="flabel">${esc(t('model'))}</span>
+  <label class="opt"><input type="radio" name="src" value="demo"${api?'':' checked'}>${esc(t('m_demo'))}</label><label class="opt"><input type="radio" name="src" value="api"${api?' checked':''}>${esc(t('m_api'))}</label>
+  ${api?`<div class="field"><label for="apiUrl">${esc(t('api_url'))}</label><input id="apiUrl" type="url" inputmode="url" autocomplete="off" value="${esc(S.prefs.apiUrl)}" placeholder="http://localhost:8000"></div>
+  <p class="small muted">${esc(t('api_help',{u}))}</p><pre><code>${esc(sample)}</code></pre>${notice('',t('api_note'))}<div><button class="btn btn-out" data-act="test">${esc(t('test'))}</button></div>`:''}</section>
+ <section class="card stackv"><span class="flabel">${esc(t('storage'))}</span><p class="small muted">${esc(t('st_'+S.storage))} · ${esc(countLabel(S.scans.length))}</p>
+  <div class="btns">${S.scans.length?`<button class="btn btn-out danger" data-act="clear">${ic('trash',18)}${esc(t('clear'))}</button>`:''}<a class="btn btn-out" href="#welcome">${esc(t('welcome_again'))}</a></div></section>
+ <p class="small muted center">${esc(t('app_line'))}</p></div>`}
+
+/* ---------- chrome & routing ---------- */
+const NAV=[['home','home','nav_home'],['scan','cam','nav_scan'],['history','clock','nav_history'],['guide','book','nav_guide']];
+const navKey=r=>(r==='scan'||r==='check'||r==='result')?'scan':r.startsWith('result-')?'history':r;
+function renderChrome(r){const k=navKey(r),cur=n=>n===k?' aria-current="page"':'';
+ $('#sideBrand').innerHTML=`<span class="mark" style="width:36px;height:36px">${ic('leaf',20)}</span><span class="stackv" style="gap:0"><span class="bname">TulaScan</span><span class="small muted">${esc(t('brand_tag'))}</span></span>`;
+ $('#sidenav').innerHTML=[...NAV,['prefs','prefs','nav_prefs']].map(([id,i,l])=>`<a href="#${id}"${cur(id)}>${ic(i,20)}${esc(t(l))}</a>`).join('');
+ $('#sidefoot').innerHTML=`${langSeg()}<span>${esc(t('st_'+S.storage))}</span>`;
+ $('#tabs').innerHTML=NAV.map(([id,i,l])=>`<a href="#${id}"${cur(id)}>${ic(i,22)}${esc(t(l))}</a>`).join('');
+ const other=S.prefs.lang==='en'?'bn':'en';
+ $('#top').innerHTML=`<a class="brand" href="#home"><span class="mark" style="width:32px;height:32px">${ic('leaf',18)}</span><span class="bname">TulaScan</span></a><div class="acts"><button class="pillbtn" data-act="lang" data-l="${other}" aria-label="${esc(t('lang'))}"${other==='bn'?' lang="bn"':''}>${ic('globe',16)}${other==='bn'?'বাংলা':'English'}</button><a class="iconbtn" href="#prefs" aria-label="${esc(t('nav_prefs'))}"${cur('prefs')}>${ic('prefs',22)}</a></div>`}
+function render(nav){
+ document.documentElement.lang=S.prefs.lang;
+ let r=decodeURIComponent((location.hash||'').slice(1));
+ if(!S.prefs.onboarded)r='welcome';else if(!r)r='home';
+ let html;
+ if(r==='welcome')html=welcomeView();
+ else if(r==='scan')html=scanView();
+ else if(r==='check'){if(!S.current){location.replace('#scan');return}html=checkView()}
+ else if(r==='result'){if(!S.current||!S.current.scan){location.replace('#scan');return}html=resultView(S.current.scan,true)}
+ else if(r.startsWith('result-')){const s=S.scans.find(x=>'result-'+x.id===r);if(!s){location.replace('#history');return}html=resultView(s,false)}
+ else if(r==='history')html=historyView();else if(r==='guide')html=guideView();else if(r==='prefs')html=prefsView();else{r='home';html=homeView()}
+ $('#app').classList.toggle('bare',r==='welcome');$('#view').innerHTML=html;renderChrome(r);
+ if(r==='scan')requestAnimationFrame(()=>setTimeout(fillSamples,30));
+ if(nav){window.scrollTo(0,0);const h=$('#view h1');if(h)h.focus({preventScroll:true})}}
+function fillSamples(){for(const k of SAMPLE_KINDS){const im=$(`img[data-sample="${k}"]`);if(im&&!im.getAttribute('src'))im.src=makeSample(k).thumb}}
+
+/* ---------- actions ---------- */
+async function analyze(){const c=S.current;if(!c)return;busy('run');let probs,heat=null,model='demo-1.0',source=S.prefs.source;
+ try{stepTo(0);await wait(420);stepTo(1);
+  if(source==='api'){const r=await predictRemote(dataURLtoBlob(c.big));probs=r.probs;heat=r.heat;model=r.model}
+  else{probs=demoPredict(c.A);await wait(520)}
+  stepTo(2);if(source!=='api')heat=heatFor(c.A,topOf(probs));await wait(380);
+ }catch(e){busy(false);toast(t('api_err',{e:e&&e.name==='AbortError'?'timeout':(e&&e.message)||'error'}));return}
+ const top=topOf(probs),conf=probs[top],reasons=QK.filter(k=>c.q[k].st==='bad'),thr=S.prefs.threshold;
+ const m=c.A;c.scan={id:newId(),createdAt:Date.now(),photo:c.photo,heat,probs,top,conf,status:reasons.length||conf<thr/100?'unclear':'ok',reasons,threshold:thr,
+  quality:c.q,metrics:{brightness:Math.round(m.bright),sharpness:Math.round(m.sharp),coverage:+m.cover.toFixed(3),background:+m.bgBusy.toFixed(2)},
+  plot:(c.plot||'').trim().slice(0,60),stage:c.stage,model,source,sample:c.sample};
+ c.saved=false;S.view='photo';busy(false);location.hash='#result'}
+function toCSV(){const rows=[['id','date','plot','growth_stage','status','result','confidence','healthy','nitrogen','phosphorus','potassium','brightness','sharpness','leaf_coverage','model','sample']];
+ for(const s of S.scans){const m=s.metrics||{};rows.push([s.id,new Date(s.createdAt).toISOString(),s.plot||'',s.stage||'',s.status,s.status==='unclear'?'':s.top,(s.conf||0).toFixed(3),...CLS.map(k=>(s.probs[k]||0).toFixed(3)),m.brightness??'',m.sharpness??'',m.coverage??'',modelName(s),s.sample||''])}
+ return rows.map(r=>r.map(v=>{const x=String(v);return/[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}).join(',')).join('\n')}
+async function exportCSV(){const csv=toCSV(),name='tulascan-history-'+new Date().toISOString().slice(0,10)+'.csv';
+ if(S.dl){try{await S.dl.save({filename:name,data:csv});toast(t('csv_saved'))}catch(e){toast(t('dl_cancel'))}return}
+ if(window.claude){try{await navigator.clipboard.writeText(csv);toast(t('csv_copied'))}catch(e){toast(t('dl_fail'))}return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+async function testConn(){const base=apiBase();try{if(!/^https?:\/\//.test(base))throw 0;const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),5000);
+ const r=await fetch(base+'/health',{signal:ctl.signal});clearTimeout(tm);toast(t(r.ok?'conn_ok':'conn_fail'))}catch(e){toast(t('conn_fail'))}}
+
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+ if(a==='lang'){setPref('lang',b.dataset.l);render()}
+ else if(a==='start'){setPref('onboarded',true);if(location.hash==='#home')render(true);else location.hash='#home'}
+ else if(a==='pick-cam')$('#camIn').click();
+ else if(a==='pick-gal')$('#galIn').click();
+ else if(a==='sample'){const k=b.dataset.k,sm=makeSample(k);busy('read');await wait(60);try{await useSource(sm.canvas,600,600,k)}finally{busy(false)}}
+ else if(a==='analyze')analyze();
+ else if(a==='view'){S.view=b.dataset.v;render()}
+ else if(a==='save'){if(!S.current||!S.current.scan||S.current.saved)return;S.current.saved=true;const p=S.current.scan.plot;if(p!==S.prefs.lastPlot)setPref('lastPlot',p);await saveScan(S.current.scan);render();toast(t('saved'))}
+ else if(a==='filter'){S.filter=b.dataset.f;render()}
+ else if(a==='del'){const id=b.dataset.id;if(await confirmBox(t('del_q'),t('del_b'),t('del'))){await removeScan(id);toast(t('deleted'));if(location.hash.startsWith('#result-'))location.hash='#history';else render()}}
+ else if(a==='clear'){if(await confirmBox(t('clear_q',{n:num(S.scans.length)}),t('del_b'),t('clear'))){for(const s of [...S.scans])await removeScan(s.id);toast(t('cleared'));render()}}
+ else if(a==='export')exportCSV();
+ else if(a==='test')testConn()});
+document.addEventListener('input',e=>{const el=e.target;
+ if(el.id==='plot'&&S.current)S.current.plot=el.value;
+ else if(el.id==='q'){S.q=el.value;$('#hlist').innerHTML=listHTML();$('#hcount').textContent=countLabel(filtered().length)}
+ else if(el.id==='thr')$('#thrv').textContent=num(+el.value)+'%'});
+document.addEventListener('change',e=>{const el=e.target;
+ if(el.id==='stage'&&S.current)S.current.stage=el.value;
+ else if(el.id==='thr')setPref('threshold',+el.value);
+ else if(el.name==='src'){setPref('source',el.value);render()}
+ else if(el.id==='apiUrl')setPref('apiUrl',el.value.trim());
+ else if(el.id==='camIn'||el.id==='galIn'){const f=el.files&&el.files[0];el.value='';loadFile(f)}});
+document.addEventListener('dragover',e=>{const z=e.target.closest&&e.target.closest('[data-drop]');if(z){e.preventDefault();z.classList.add('drag')}});
+document.addEventListener('dragleave',e=>{const z=e.target.closest&&e.target.closest('[data-drop]');if(z)z.classList.remove('drag')});
+document.addEventListener('drop',e=>{const z=e.target.closest&&e.target.closest('[data-drop]');if(!z)return;e.preventDefault();z.classList.remove('drag');loadFile(e.dataTransfer.files&&e.dataTransfer.files[0])});
+document.addEventListener('paste',e=>{if(!S.prefs.onboarded)return;const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(it){e.preventDefault();loadFile(it.getAsFile())}});
+window.addEventListener('hashchange',()=>render(true));
+
+/* ---------- start ---------- */
+const saved=Local.load();
+if(saved){S.prefs={...DEF,...(saved.prefs||{})};S.scans=Array.isArray(saved.scans)?saved.scans.filter(s=>s&&s.id&&s.probs):[]}
+S.storage=Local.ok?'local':'memory';
+render();initCloud();
+window.TulaScan={state:S,analyzeGrid,demoPredict,quality,makeSample};
+}
+</script>
+</body>
+</html>
